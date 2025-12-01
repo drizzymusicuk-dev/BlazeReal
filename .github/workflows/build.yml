@@ -1,10 +1,8 @@
-name: Build BlazeReal APK
+name: Build BlazeReal APK (No Gradlew)
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -21,18 +19,17 @@ jobs:
       - name: Extract BlazeReal.zip
         run: |
           if [ -f "BlazeReal.zip" ]; then
-            echo "Found BlazeReal.zip, extracting..."
-            unzip -o BlazeReal.zip -d ./BlazeReal
-            echo "Extraction completed."
+            echo "Extracting BlazeReal.zip..."
+            unzip -o BlazeReal.zip -d ./project
           else
-            echo "ERROR: BlazeReal.zip not found in repository root!"
+            echo "ERROR: BlazeReal.zip not found!"
             exit 1
           fi
 
-      - name: Move extracted files to root
+      - name: Move extracted project to root
         run: |
-          cp -r ./BlazeReal/* ./
-          rm -rf BlazeReal
+          cp -r ./project/* .
+          rm -rf project
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
@@ -40,20 +37,20 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Install Gradle (system-level)
+        uses: gradle/actions/setup-gradle@v3
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK packages
+      - name: Install Android build tools
         run: |
           sdkmanager "platform-tools" \
                      "build-tools;34.0.0" \
                      "platforms;android-34"
 
-      - name: Make Gradle executable
-        run: chmod +x gradlew
-
-      - name: Build APK
-        run: ./gradlew assembleDebug
+      - name: Build APK using system Gradle
+        run: gradle assembleDebug --no-daemon
 
       - name: Find APK
         id: apk
@@ -66,7 +63,7 @@ jobs:
         uses: actions/create-release@v1
         with:
           tag_name: "build-${{ github.run_number }}"
-          release_name: "BlazeReal Build ${{ github.run_number }}"
+          release_name: "Build #${{ github.run_number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
