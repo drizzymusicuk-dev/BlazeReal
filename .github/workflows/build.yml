@@ -1,4 +1,4 @@
-name: Build BlazeReal APK (No Gradlew)
+name: Build BlazeReal APK (Gradle 8.2 Compatible)
 
 on:
   push:
@@ -10,64 +10,58 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install unzip tool
+      - name: Install unzip
         run: sudo apt-get install unzip
 
-      - name: Extract BlazeReal.zip
+      - name: Extract ZIP
         run: |
-          if [ -f "BlazeReal.zip" ]; then
-            echo "Extracting BlazeReal.zip..."
-            unzip -o BlazeReal.zip -d ./project
-          else
-            echo "ERROR: BlazeReal.zip not found!"
-            exit 1
-          fi
-
-      - name: Move extracted project to root
-        run: |
-          cp -r ./project/* .
+          unzip -o BlazeReal.zip -d ./project
+          cp -r ./project/* ./
           rm -rf project
 
-      - name: Set up JDK 17
+      - name: Install JDK 17
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Install Gradle (system-level)
+      # 🟢 PIN GRADLE 8.2
+      - name: Install Gradle 8.2
         uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: 8.2
 
-      - name: Set up Android SDK
+      - name: Install Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android build tools
+      - name: Install build-tools & platform
         run: |
           sdkmanager "platform-tools" \
                      "build-tools;34.0.0" \
                      "platforms;android-34"
 
-      - name: Build APK using system Gradle
+      # 🟢 Use Gradle 8.2 to build APK
+      - name: Build APK
         run: gradle assembleDebug --no-daemon
 
       - name: Find APK
         id: apk
         run: |
-          APK=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
-          echo "apk_path=$APK" >> $GITHUB_OUTPUT
+          echo "apk_path=$(find app/build/outputs/apk/debug -name '*.apk' | head -n 1)" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      - name: Create Release
         id: release
         uses: actions/create-release@v1
         with:
           tag_name: "build-${{ github.run_number }}"
-          release_name: "Build #${{ github.run_number }}"
+          release_name: "BlazeReal Build ${{ github.run_number }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload APK to Release
+      - name: Upload APK
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.release.outputs.upload_url }}
